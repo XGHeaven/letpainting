@@ -1,0 +1,17 @@
+{
+  "name": "free-socket",
+  "version": "0.0.1",
+  "description": "a compatibility ajax module for websocket",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "faye-websocket": "^0.9.4"
+  },
+  "devDependencies": {
+    "ws": "^0.7.2"
+  }
+}
