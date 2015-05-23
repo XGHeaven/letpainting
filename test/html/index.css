@@ -1,0 +1,11 @@
+html,
+body {
+  padding: 0;
+  margin: 0;
+  text-align: center;
+}
+#paint {
+  width: 300px;
+  height: 300px;
+  border: 1px solid #dddddd;
+}

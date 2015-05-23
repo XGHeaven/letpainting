@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html>
+<head lang="en">
+    <meta charset="UTF-8">
+    <title></title>
+    <script src="../../src/client/websocket.js"></script>
+    <script src="./bower_components/jquery/dist/jquery.js"></script>
+    <link rel="stylesheet" href="./index.css"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+    <script>
+        var id = parseInt(Math.random() * 100);
+        ws = fws('ws://192.168.100.167:3000', {
+            verify: {id:id}
+        });
+        ws.connect();
+
+        var isPhone = window.screen.availWidth < 500;
+
+        $(function() {
+            var paintCanvas = document.getElementById('paint'),
+                    paint = paintCanvas.getContext('2d'),
+                    text = $('#text'),
+                    $paint = $('#paint'),
+                    painting = false,
+                    $clear = $('#clear'),
+                    $changColor = $('#change-color'),
+                    offset = $paint.offset(),
+                    color,
+                    now = {
+                        x: 0,
+                        y: 0,
+                        color: color
+                    };
+            console.log(paint);
+
+            function randomColor() {
+                color =  ('000000' + (Math.random() * 0xffffff).toString(16)).slice(-6);
+                paint.strokeStyle = '#' + color;
+            }
+            randomColor();
+
+            $clear.click(function() {
+                paint.clearRect(0,0,300,300);
+            });
+
+            $changColor.click(function(e) {
+                console.log(e);
+                randomColor();
+            });
+
+            if (isPhone) {
+                $paint.on('touchstart', function(e) {
+                    startLine(e.originalEvent.touches[0].clientX - offset.left, e.originalEvent.touches[0].clientY - offset.top)
+                }).on('touchmove', function(e){
+                    console.log(e);
+                    moveLine(e.originalEvent.touches[0].clientX - offset.left, e.originalEvent.touches[0].clientY - offset.top)
+                }).on('touchend', function(e) {
+                    endLine(0,0);
+                });
+            } else {
+                $paint.mousedown(function(e) {
+//                    console.log(e);
+                    startLine(e.offsetX, e.offsetY);
+                }).mousemove(function(e) {
+                    moveLine(e.offsetX, e.offsetY);
+                }).mouseup(function(e) {
+                    endLine(e.offsetX, e.offsetY);
+                });
+            }
+
+            ws.listen('path', function(data) {
+                console.log(data);
+                data = data.data;
+                drawLine(data.start.x,data.start.y,data.end.x,data.end.y,data.end.color);
+            });
+
+            function drawLine(x1,y1,x2,y2,c) {
+                paint.beginPath();
+                paint.strokeStyle = '#' + c;
+                paint.moveTo(x1,y1);
+                paint.lineTo(x2,y2);
+                paint.stroke();
+            }
+
+            function startLine(x, y) {
+                painting = true;
+                now.x = x;
+                now.y = y;
+                now.color = color;
+            }
+
+            function moveLine(x, y) {
+                if (!painting) return;
+                drawLine(now.x,now.y,x,y,color);
+                ws.post('path/' + id, {
+                    start: now,
+                    end: {
+                        x: x,
+                        y: y,
+                        color: color
+                    }
+                }, function(data) {
+                    console.log(data);
+                });
+
+                now.x = x;
+                now.y = y;
+            }
+
+            function endLine(x, y) {
+                painting = false;
+            }
+
+        })
+    </script>
+</head>
+<body>
+<h1>大家一起来画画呀</h1>
+<div>
+    <canvas id="paint" width="300" height="300"></canvas>
+</div>
+<button type="button" id="clear">清空</button>
+<button type="button" id="change-color">切换颜色</button
+<div id="text"></div>
+</body>
+</html>
