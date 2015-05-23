@@ -11,50 +11,42 @@ var fresSocket = require('../src/new'),
         });
         res.end();
     }),
+    express = require('express'),
+    app = express(),
     //express = require('express'),
     //app = express(),
 
-    socket = new fresSocket(server, {
-    });
+    socket = new fresSocket(server, { });
 
 server.listen(3000);
 
 socket.on('open', function(ws, data){
-    console.log('open',data);
     return data.id;
 });
 
+socket.on('ready', function(ws) {
+    console.log(ws.socketID, 'ready');
+    socket.restash(ws);
+});
+
 socket.post('name', function(ws, params, data) {
-    console.log(data);
     return data;
+});
+
+socket.post('clear', function(ws, params, data) {
+    socket.clearStash();
+    socket.broadcast('clear');
 });
 
 socket.post('path/:id', function(ws, params, data) {
-    socket.broadcast('path', {
+    socket.broadcastOther('path', {
         user: params.id,
         data: data
-    });
-    console.log(data);
+    }, ws, true);
     return data;
 });
 
-//socket.on('message', function(evt) {
-//    console.log(evt.data);
-//});
+socket.on('close', function(ws) {
+});
 
-//socket.post('message/:user', function(match, data){
-//    console.log('createSocket file path', arguments);
-//    data.user = match.user;
-//    socket.broadcast('message', data);
-//    return data;
-//});
-//
-//socket.on('open', function(evt) {
-//    socket.broadcast('user/count', socket.user.count());
-//    socket.broadcast('user/list', socket.user.list());
-//});
-
-//setInterval(function(){
-//    socket.broadcast('path', new Date());
-//    console.log('broadcase');
-//},2000);
+app.post('/')

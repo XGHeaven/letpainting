@@ -188,7 +188,7 @@
                         if (typeof configs.verifyCallback.success === 'function') {
                             configs.verifyCallback.success.call($this, msg.$data);
                         }
-                        invokeEvent('ready');
+                        //invokeEvent('ready');
                     } else {
                         //$this.status = 401;
                         if (typeof configs.verifyCallback.fail === 'function') {
@@ -200,11 +200,11 @@
         }
 
         function msgRouter(evt) {
-            //console.log(evt.data);
             var msg = JSON.parse(evt.data),
                 ws = evt.target,
                 k, callback;
 
+            console.log(msg);
             switch (msg.$method) {
                 case 'event':
                     customEvent(msg);
@@ -222,8 +222,6 @@
         }
 
         function post(path, data, callback) {
-            //if ($this.verify === false) return false;
-
             var id = hash();
 
             !!callback && (msgCallbacks[id] = callback);

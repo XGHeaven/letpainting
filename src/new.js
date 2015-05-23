@@ -24,14 +24,6 @@ var WebSocket = require('./wrapperSocket'),
 
 
 function freeSocket(server, config) {
-    var me = {
-        listen: listen,
-        on: on,
-        get: get,
-        post: post,
-        broadcast: broadcast
-    };
-
     var evtCallbacks = {
         open: []
     };
@@ -53,6 +45,24 @@ function freeSocket(server, config) {
 
     var sockets = {};
 
+    var msgStash = [];
+
+    var me = {
+        listen: listen,
+        on: on,
+        get: get,
+        post: post,
+        broadcast: broadcast,
+        broadcastOther: broadcastOther,
+        stash: stash,
+        restash: restash,
+        clearStash: clearStash,
+        _sockets: sockets,
+        _config: config,
+        _msgCallback: msgCallbacks,
+        _evtCallback: evtCallbacks
+    };
+
     utils.extend(cfg, config);
 
     // resolve path
@@ -62,16 +72,6 @@ function freeSocket(server, config) {
     if (cfg.transfer && cfg.transfer.post && !cfg.transfer.post.href) {
         cfg.transfer.post.href = url.format(utils.extend({},cfg.default.url,cfg.transfer.post));
     }
-
-    // create server
-    //if (cfg.server) {
-        //server.createServer(function(req,res) {
-        //    body(req, res, {}, function(err, body) {
-        //        console.log(body);
-        //    });
-        //});
-    //}
-
 
     // imitate listen method by socket
     function listen(port, callback) {
@@ -99,12 +99,55 @@ function freeSocket(server, config) {
         return this;
     }
 
-    function broadcast(path, data) {
+    function stash(path, data) {
+        msgStash.push({
+            $method: 'listen',
+            $path: path,
+            $time: new Date().getTime(),
+            $data: data
+        });
+
+        return this;
+    }
+
+    function restash(ws) {
+        var i = 0;
+        for (; i<msgStash.length; i++) {
+            ws.send(msgStash[i]);
+        }
+
+        return this;
+    }
+
+    function clearStash() {
+        msgStash.length = 0;
+        return this;
+    }
+
+    function broadcast(path, data, stash) {
         var k;
 
         for (k in sockets) {
-            sockets[k].push(path, data);
+            if (sockets.hasOwnProperty(k)) {
+                sockets[k].push(path, data);
+            }
         }
+
+        stash && this.stash(path, data);
+
+        return this;
+    }
+
+    function broadcastOther(path, data, self, stash) {
+        var k;
+
+        for (k in sockets) {
+            if (sockets.hasOwnProperty(k) && sockets[k] !== self) {
+                sockets[k].push(path, data);
+            }
+        }
+
+        stash && this.stash(path, data);
 
         return this;
     }
@@ -132,6 +175,7 @@ function freeSocket(server, config) {
 
         switch (evt.type) {
             case 'error':
+                errorRouter.call(me, evt);
                 break;
             case 'open':
                 break;
@@ -140,6 +184,7 @@ function freeSocket(server, config) {
                 break;
             case 'close':
                 // set status and delete connection
+                invokeEvent('close', ws);
                 ws.status = ws.SIGN.CLOSED;
                 delete sockets[ws.socketID];
                 break;
@@ -154,7 +199,7 @@ function freeSocket(server, config) {
         try {
             msg = JSON.parse(evt.data);
         } catch(e) {
-            ws.error(msg, SIGN.NO);
+            ws.error(msg, ws.SIGN.NO);
             return false;
         }
 
@@ -162,7 +207,7 @@ function freeSocket(server, config) {
         switch (ws.status) {
             case SIGN.OPENING:
                 if (msg.$type !== 'open') {
-                    ws.error(msg, SIGN.NOOPEN);
+                    ws.error(msg, ws.SIGN.NOOPEN);
                     return false;
                 }
                 break;
@@ -176,6 +221,7 @@ function freeSocket(server, config) {
 
         switch (msg.$method) {
             case 'error':
+                invokeEvent('error', ws, msg.$error);
                 break;
             case 'event':
                 evtRouter.call(me, evt, msg);
@@ -202,12 +248,13 @@ function freeSocket(server, config) {
             case 'open':
                 data = invokeEvent('open', ws, msg.$data);
                 if (data !== undefined) {
-                    ws.socketID = data.toString();
+                    ws.socketID = data;
                 } else {
                     ws.socketID = utils.hash();
                 }
                 sockets[ws.socketID] = ws;
                 ws.status = ws.SIGN.OPEN;
+                invokeEvent('ready', ws);
                 break;
             default:
                 invokeEvent(msg.$type, ws, msg.$data);

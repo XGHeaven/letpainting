@@ -49,7 +49,7 @@ WebSocket.prototype.error = function(msg, error) {
 WebSocket.prototype.push = function(path, data) {
     var i = 0, pushData;
 
-    console.log(this.status);
+    //console.log(this.status);
     if (this.status < this.SIGN.OPEN) {
         this.msgStash.push({
             $method: 'listen',

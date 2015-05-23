@@ -12,7 +12,7 @@
         ws = fws('ws://192.168.100.167:3000', {
             verify: {id:id}
         });
-        ws.connect();
+//        ws.connect();
 
         var isPhone = window.screen.availWidth < 500;
 
@@ -40,7 +40,7 @@
             randomColor();
 
             $clear.click(function() {
-                paint.clearRect(0,0,300,300);
+                ws.post('clear',{});
             });
 
             $changColor.click(function(e) {
@@ -73,6 +73,14 @@
                 data = data.data;
                 drawLine(data.start.x,data.start.y,data.end.x,data.end.y,data.end.color);
             });
+
+            ws.listen('clear', function(data) {
+                clearPaint();
+            });
+
+            function clearPaint() {
+                paint.clearRect(0,0,300,300);
+            }
 
             function drawLine(x1,y1,x2,y2,c) {
                 paint.beginPath();
@@ -110,6 +118,8 @@
             function endLine(x, y) {
                 painting = false;
             }
+
+            ws.connect();
 
         })
     </script>
